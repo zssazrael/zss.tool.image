@@ -18,7 +18,7 @@ import zss.tool.IOTool;
 import zss.tool.LoggedException;
 import zss.tool.Version;
 
-@Version("2016-04-09")
+@Version("2017.11.03")
 public class PNGTool
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PNGTool.class);
@@ -78,5 +78,9 @@ public class PNGTool
     public static ImageReader newReader()
     {
         return ImageTool.getImageReaderByMIMEType(MIME_TYPE);
+    }
+
+    public static String fileName(final BufferedImage image) {
+        return ImageTool.fileName(image).concat(".png");
     }
 }

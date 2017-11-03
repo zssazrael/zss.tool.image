@@ -26,7 +26,7 @@ import zss.tool.LoggedException;
 import zss.tool.ResourceTool;
 import zss.tool.Version;
 
-@Version("2013-02-04")
+@Version("2017.11.03")
 public class ImageTool
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(ImageTool.class);
@@ -162,26 +162,20 @@ public class ImageTool
     /**
      * 计算图片像素的 MD5
      *
-     * @param image
-     *            图片
+     * @param image 图片
      * @return MD5
      */
-    public static String md5(final BufferedImage image)
-    {
-        final MessageDigest digest = HashTool.newMD5MessageDigest();
-        final int width = image.getWidth();
-        final int height = image.getHeight();
-        final byte[] data = new byte[4];
-        final IntBuffer buffer = ByteBuffer.wrap(data).asIntBuffer();
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                buffer.clear();
-                buffer.put(image.getRGB(x, y));
-                digest.update(data);
-            }
-        }
-        return HexTool.transform(digest.digest());
+    public static String md5(final BufferedImage image) {
+        return HexTool.transform(md5(new ImageList(image)));
+    }
+
+    public static String fileName(final BufferedImage image) {
+        final StringBuilder name = new StringBuilder();
+        name.append(image.getWidth());
+        name.append('x');
+        name.append(image.getHeight());
+        name.append('-');
+        name.append(md5(image));
+        return name.toString();
     }
 }

@@ -3,7 +3,7 @@
 
     <groupId>zss</groupId>
     <artifactId>tool.image</artifactId>
-    <version>2016.09.25</version>
+    <version>2017.11.03</version>
     <packaging>jar</packaging>
 
     <name>tool.image</name>
