@@ -1,5 +1,7 @@
 package zss.tool.image;
 
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +28,7 @@ import zss.tool.LoggedException;
 import zss.tool.ResourceTool;
 import zss.tool.Version;
 
-@Version("2017.11.03")
+@Version("2019.06.18")
 public class ImageTool
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(ImageTool.class);
@@ -177,5 +179,18 @@ public class ImageTool
         name.append('-');
         name.append(md5(image));
         return name.toString();
+    }
+    
+    public static BufferedImage newBufferedImage(final Image image) {
+        final int width = image.getWidth(null);
+        final int height = image.getHeight(null);
+        final BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        final Graphics2D graphics = bufferedImage.createGraphics();
+        try {
+            graphics.drawImage(image, 0, 0, width, height, null);
+        } finally {
+            graphics.dispose();
+        }
+        return bufferedImage;
     }
 }
