@@ -1,11 +1,16 @@
 package zss.tool.image;
 
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.security.MessageDigest;
@@ -14,6 +19,7 @@ import java.util.Iterator;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.ImageWriter;
+import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.MemoryCacheImageInputStream;
 
@@ -28,9 +34,8 @@ import zss.tool.LoggedException;
 import zss.tool.ResourceTool;
 import zss.tool.Version;
 
-@Version("2019.06.18")
-public class ImageTool
-{
+@Version("2020.02.25")
+public class ImageTool {
     private static final Logger LOGGER = LoggerFactory.getLogger(ImageTool.class);
 
     public static ImageList read(final InputStream stream)
@@ -66,29 +71,87 @@ public class ImageTool
         throw new LoggedException();
     }
 
-    public static ImageList read(final ImageReader reader)
-    {
-        int index = 0;
+    public static ImageList read(final ImageReader reader) {
+        if ("com.sun.imageio.plugins.gif.GIFImageReader".equals(reader.getClass().getCanonicalName())) {
+            return readGIF(reader);
+        }
         final ImageList list = new ImageList();
-        while (true)
-        {
-            try
-            {
+        try {
+            final int numImages = reader.getNumImages(true);
+            int index = reader.getMinIndex();
+            for (int i = 0; i < numImages; i++) {
                 list.add(reader.read(index));
+                index++;
             }
-            catch (IndexOutOfBoundsException e)
-            {
-                break;
-            }
-            catch (IOException e)
-            {
-                LOGGER.error(e.getMessage(), e);
-                throw new LoggedException();
-            }
-
-            index++;
+        } catch (IOException e) {
+            LOGGER.error(e.getMessage(), e);
+            throw new LoggedException();
         }
         return list;
+    }
+
+    private static ImageList readGIF(final ImageReader reader) {
+        final ImageList list = new ImageList();
+        try {
+            final int numImages = reader.getNumImages(true);
+            int index = reader.getMinIndex();
+            BufferedImage image = null;
+            for (int i = 0; i < numImages; i++) {
+                BufferedImage temp = readGIF(reader, index, image);
+                list.add(temp);
+                image = temp;
+                index++;
+            }
+        } catch (IOException e) {
+            LOGGER.error(e.getMessage(), e);
+            throw new LoggedException();
+        }
+        return list;
+    }
+
+    private static BufferedImage readGIF(final ImageReader reader, final int index, final BufferedImage image) throws IOException {
+        final BufferedImage temp = reader.read(index);
+        if (image == null) {
+            return temp;
+        }
+        final IIOMetadata metadata = reader.getImageMetadata(index);
+        final Point position = getGIFPosition(metadata);
+        if (position == null) {
+            return temp;
+        }
+        final ColorModel colorModel = image.getColorModel();
+        final BufferedImage merge;
+        if (colorModel instanceof IndexColorModel) {
+            merge = new BufferedImage(image.getWidth(), image.getHeight(), image.getType(), (IndexColorModel) colorModel);
+        } else {
+            merge = new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
+        }
+
+        final Graphics graphics = merge.getGraphics();
+        try {
+            graphics.drawImage(image, 0, 0, null);
+            graphics.drawImage(temp, position.x, position.y, null);
+        } finally {
+            graphics.dispose();
+        }
+        return merge;
+    }
+
+    private static Point getGIFPosition(final IIOMetadata metadata) {
+        if (!"com.sun.imageio.plugins.gif.GIFImageMetadata".equals(metadata.getClass().getCanonicalName())) {
+            return null;
+        }
+        try {
+            final Class<?> type = metadata.getClass();
+            final Field gifImageLeftPosition = type.getDeclaredField("imageLeftPosition");
+            final Field gifImageTopPosition = type.getDeclaredField("imageTopPosition");
+            final int left = gifImageLeftPosition.getInt(metadata);
+            final int top = gifImageTopPosition.getInt(metadata);
+            return new Point(left, top);
+        } catch (Exception e) {
+            LOGGER.debug(e.getMessage(), e);
+        }
+        return null;
     }
 
     public static ImageList read(final File file)
